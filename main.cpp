@@ -188,12 +188,13 @@ int main(int argc, char** argv)
     //initialization
     pcl::PCDReader reader;
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    reader.read("../tree.pcd",*cloud);
 
     PointCloud<pcl::PointXYZRGB>::Ptr cloud(new PointCloud<pcl::PointXYZRGB>);
     PointCloud<pcl::PointXYZRGB>::Ptr cloud_f(new PointCloud<pcl::PointXYZRGB>);
     PointCloud<pcl::PointXYZRGB>::Ptr cloud_noGround(new PointCloud<pcl::PointXYZRGB>);
     std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> cloud_cluster;
+
+    reader.read("../tree.pcd",*cloud);
 
     //Voxel grid filter
     FilterCloud(cloud, cloud_f);
