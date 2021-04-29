@@ -1,4 +1,6 @@
 #include <iostream>
+#include <vector>
+#include <pcl/common/common.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/io/pcd_io.h>
@@ -8,26 +10,47 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/passthrough.h>
-
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/extract_clusters.h>
 
 using namespace std;
 using namespace pcl;
+
+int color_bar[][3] =
+        {
+                { 255,0,0},
+                { 0,255,0 },
+                { 0,0,255 },
+                { 0,255,255 },
+                { 255,255,0 },
+                { 255,255,255 },
+                { 255,0,255 }
+        };
+
 
 void detectObjectsOnCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud_filtered)
 {
     auto startTime = std::chrono::steady_clock::now();
     if (cloud->size() > 0)
     {
+        //创建分割时所需要的模型系数对象，coefficients及存储内点的点索引集合对象inliers
         pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        // 创建分割对象
         pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+        // 可选择配置，设置模型系数需要优化
         seg.setOptimizeCoefficients(true);
+        // 必要的配置，设置分割的模型类型，所用的随机参数估计方法，距离阀值，输入点云
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
         // you can modify the parameter below
         seg.setMaxIterations(100);
         seg.setDistanceThreshold(0.15);
         seg.setInputCloud(cloud);
+        //引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
         seg.segment(*inliers, *coefficients);
         if (inliers->indices.size() == 0)
         {
@@ -49,7 +72,7 @@ void detectObjectsOnCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::Po
     }
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << "Ground removal took " << elapsedTime.count() << " milliseconds" << std::endl;
+    std::cout << "Ground removal took " << elapsedTime.count() << " ms" << std::endl;
 }
 
 void FilterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud_filtered){
@@ -92,9 +115,52 @@ void FilterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<
     }
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << "Voxel grid took " << elapsedTime.count() << " milliseconds" << std::endl;
+    std::cout << "Voxel grid took " << elapsedTime.count() << " ms" << std::endl;
 }
 
+void EuclidCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> &clusters){
+
+    auto startTime = std::chrono::steady_clock::now();
+    // KdTree的搜索方式
+    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB>);
+    tree->setInputCloud(cloud);
+
+    std::vector<pcl::PointIndices> cluster_indices;
+    // 欧几里德聚类提取
+    pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
+    ec.setClusterTolerance(0.2); // 设置空间聚类误差2cm
+    ec.setMinClusterSize(100);  // 设置有效聚类包含的最小的个数
+    ec.setMaxClusterSize(25000);  // 设置有效聚类包含的最大的个数
+    ec.setSearchMethod(tree);  // 设置搜索方法
+    ec.setInputCloud(cloud);
+    ec.extract(cluster_indices);  // 获取切割之后的聚类索引保存到cluster_indices
+
+    //int j = 0;
+
+    // 获取每个聚类的索引个数
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it){
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); pit++){
+            cloud_cluster->points.push_back(cloud->points[*pit]);} //*
+        cloud_cluster->width = cloud_cluster->points.size();
+        cloud_cluster->height = 1;
+        cloud_cluster->is_dense = true;
+        clusters.push_back(cloud_cluster);
+
+        // 聚类可视化
+//        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud_in_color_h(cloud,
+//                color_bar[j][0],
+//                color_bar[j][1],
+//                color_bar[j][2]);//赋予显示点云的颜色
+//        viewer.addPointCloud(cloud_cluster, cloud_in_color_h, "cluster" + to_string(j), v3);
+    }
+
+    auto endTime = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << "Clustering took " << elapsedTime.count() << " ms and found " << clusters.size()
+              << " clusters" << std::endl;
+
+}
 
 int main(int argc, char** argv)
 {
@@ -104,6 +170,7 @@ int main(int argc, char** argv)
     PointCloud<pcl::PointXYZRGB>::Ptr cloud(new PointCloud<pcl::PointXYZRGB>);
     PointCloud<pcl::PointXYZRGB>::Ptr cloud_f(new PointCloud<pcl::PointXYZRGB>);
     PointCloud<pcl::PointXYZRGB>::Ptr cloud_noGround(new PointCloud<pcl::PointXYZRGB>);
+    std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> cloud_cluster;
     reader.read("../tree.pcd",*cloud);
     cout << "before_filter :"<<cloud->points.size()<<endl;
 
@@ -114,11 +181,25 @@ int main(int argc, char** argv)
     //ground removal
     detectObjectsOnCloud(cloud_f, cloud_noGround);
 
+    //Clustering
+    EuclidCluster(cloud_noGround,cloud_cluster);
     //pcl_viewer
+
+
     pcl::visualization::PCLVisualizer viewer("cloud_viewer");
-    viewer.setBackgroundColor(255, 255, 255);
-    viewer.addPointCloud(cloud_noGround);
-    viewer.addCoordinateSystem();
+    viewer.setBackgroundColor(0, 0, 0);
+    int j=0;
+    for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster : cloud_cluster) {
+        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud_in_color_h(cluster,
+                                                                                            color_bar[j][0],
+                                                                                            color_bar[j][1],
+                                                                                            color_bar[j][2]);//赋予显示点云的颜色
+        viewer.addPointCloud<pcl::PointXYZRGB>(cluster, cloud_in_color_h, "cluster" + to_string(j));
+        //viewer.addPointCloud(cluster);
+        j++;
+    }
+    //viewer.addPointCloud(cloud_noGround);
+    viewer.addCoordinateSystem(1.0);
 
     while (!viewer.wasStopped())
     {
