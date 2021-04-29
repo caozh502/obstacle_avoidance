@@ -31,7 +31,7 @@ int color_bar[][3] =
         };
 
 
-void detectObjectsOnCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud_filtered)
+void groundRemove(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud_filtered)
 {
     auto startTime = std::chrono::steady_clock::now();
     if (cloud->size() > 0)
@@ -64,7 +64,7 @@ void detectObjectsOnCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::Po
         extractor.filter(*cloud_filtered);
         // vise-versa, remove the ground not just extract the ground
         // just setNegative to be true
-        cout << "filter done."<<endl;
+        cout << "Ground removal done."<<endl;
     }
     else
     {
@@ -77,6 +77,7 @@ void detectObjectsOnCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::Po
 
 void FilterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud_filtered){
     auto startTime = std::chrono::steady_clock::now();
+
     if (cloud->size() > 0){
         //ROI filter
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_fz(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -115,7 +116,9 @@ void FilterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, pcl::PointCloud<
     }
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << "Voxel grid took " << elapsedTime.count() << " ms" << std::endl;
+    cout << "before_filter :"<<cloud->points.size()<<endl;
+    cout << "after filter :" << cloud_filtered->points.size()<<endl;
+    cout << "Voxel grid took " << elapsedTime.count() << " ms" << endl;
 }
 
 void EuclidCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> &clusters){
@@ -135,24 +138,16 @@ void EuclidCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, std::vector<pc
     ec.setInputCloud(cloud);
     ec.extract(cluster_indices);  // 获取切割之后的聚类索引保存到cluster_indices
 
-    //int j = 0;
-
-    // 获取每个聚类的索引个数
-    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it){
+    // For each cluster indices
+    for (pcl::PointIndices getIndices: cluster_indices){
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); pit++){
-            cloud_cluster->points.push_back(cloud->points[*pit]);} //*
+        // For each point indices in each cluster
+        for (int index:getIndices.indices){
+            cloud_cluster->points.push_back(cloud->points[index]);} //*
         cloud_cluster->width = cloud_cluster->points.size();
         cloud_cluster->height = 1;
         cloud_cluster->is_dense = true;
         clusters.push_back(cloud_cluster);
-
-        // 聚类可视化
-//        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud_in_color_h(cloud,
-//                color_bar[j][0],
-//                color_bar[j][1],
-//                color_bar[j][2]);//赋予显示点云的颜色
-//        viewer.addPointCloud(cloud_cluster, cloud_in_color_h, "cluster" + to_string(j), v3);
     }
 
     auto endTime = std::chrono::steady_clock::now();
@@ -162,48 +157,60 @@ void EuclidCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, std::vector<pc
 
 }
 
-int main(int argc, char** argv)
-{
+void renderBox(boost::shared_ptr<pcl::visualization::PCLVisualizer>& viewer, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster, int id){
+    // Find bounding box for one of the clusters
+    pcl::PointXYZRGB minPoint, maxPoint;
+    pcl::getMinMax3D(*cluster, minPoint, maxPoint);
 
-    //read point cloud data
-    pcl::PCDReader reader;
-    PointCloud<pcl::PointXYZRGB>::Ptr cloud(new PointCloud<pcl::PointXYZRGB>);
-    PointCloud<pcl::PointXYZRGB>::Ptr cloud_f(new PointCloud<pcl::PointXYZRGB>);
-    PointCloud<pcl::PointXYZRGB>::Ptr cloud_noGround(new PointCloud<pcl::PointXYZRGB>);
-    std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> cloud_cluster;
-    reader.read("../tree.pcd",*cloud);
-    cout << "before_filter :"<<cloud->points.size()<<endl;
+    std::string cube = "box"+std::to_string(id);
+    viewer->addCube(minPoint.x, maxPoint.x, minPoint.y, maxPoint.y, minPoint.z,maxPoint.z, 1, 0, 0, cube);
+    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, cube);
+}
 
-    //Voxel grid filter
-    FilterCloud(cloud, cloud_f);
-    cout << "after filter :" << cloud_f->points.size()<<endl;
-
-    //ground removal
-    detectObjectsOnCloud(cloud_f, cloud_noGround);
-
-    //Clustering
-    EuclidCluster(cloud_noGround,cloud_cluster);
-    //pcl_viewer
-
-
-    pcl::visualization::PCLVisualizer viewer("cloud_viewer");
-    viewer.setBackgroundColor(0, 0, 0);
+void Visualisation(boost::shared_ptr<pcl::visualization::PCLVisualizer>& viewer, const std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> cloud_cluster){
+    viewer->setBackgroundColor(0, 0, 0);
     int j=0;
     for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster : cloud_cluster) {
         pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud_in_color_h(cluster,
                                                                                             color_bar[j][0],
                                                                                             color_bar[j][1],
                                                                                             color_bar[j][2]);//赋予显示点云的颜色
-        viewer.addPointCloud<pcl::PointXYZRGB>(cluster, cloud_in_color_h, "cluster" + to_string(j));
-        //viewer.addPointCloud(cluster);
+        viewer->addPointCloud<pcl::PointXYZRGB>(cluster, cloud_in_color_h, "cluster" + to_string(j));
         j++;
+        renderBox(viewer, cluster, j);
     }
-    //viewer.addPointCloud(cloud_noGround);
-    viewer.addCoordinateSystem(1.0);
+    viewer->addCoordinateSystem();
+}
 
-    while (!viewer.wasStopped())
+int main(int argc, char** argv)
+{
+
+    //initialization
+    pcl::PCDReader reader;
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    reader.read("../tree.pcd",*cloud);
+
+    PointCloud<pcl::PointXYZRGB>::Ptr cloud(new PointCloud<pcl::PointXYZRGB>);
+    PointCloud<pcl::PointXYZRGB>::Ptr cloud_f(new PointCloud<pcl::PointXYZRGB>);
+    PointCloud<pcl::PointXYZRGB>::Ptr cloud_noGround(new PointCloud<pcl::PointXYZRGB>);
+    std::vector<pcl::PointCloud<PointXYZRGB>::Ptr> cloud_cluster;
+
+    //Voxel grid filter
+    FilterCloud(cloud, cloud_f);
+
+
+    //ground removal
+    groundRemove(cloud_f, cloud_noGround);
+
+    //Clustering
+    EuclidCluster(cloud_noGround,cloud_cluster);
+
+    //Visualisation
+    Visualisation(viewer, cloud_cluster);
+
+    while (!viewer->wasStopped())
     {
-        viewer.spinOnce();
+        viewer->spinOnce(100);
     }
 
     return(0);
