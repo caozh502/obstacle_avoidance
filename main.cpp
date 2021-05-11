@@ -42,7 +42,7 @@ void obstacleDetection(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPo
 
     float height=2*uav_point1(1);
 
-    Box uav_1 = CreateBox(uav_point1,width_1,length_1,height);
+    Box uav_1 = createBox(uav_point1,width_1,length_1,height);
 //    Box uav_2 = CreateBox(uav_point2,width_2,length_2,height);
 
 
@@ -75,7 +75,7 @@ void obstacleDetection(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPo
 
         // 5th: Collision Detection
         UAVBoxVisualization(viewer, uav_1, colors[1], clusterId);
-//        CollisionVisualization(viewer, uav_2, color_bar[1], clusterId * 2 + 2);
+
         if (isCollision(box, uav_1)) {
             std::cout << "find Collision on the front" << std::endl;
             viewer->removeShape("uav" + std::to_string(clusterId));
@@ -93,16 +93,7 @@ void obstacleDetection(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPo
     }
 }
 
-//Box CreateBox(Eigen::Vector3d uav_point, float width, float length, float height){
-//    Box uav;
-//    uav.x_min=uav_point(0);
-//    uav.x_max=uav_point(0)+width;
-//    uav.y_min=uav_point(1);
-//    uav.y_max=uav_point(1)+height;
-//    uav.z_min=uav_point(2)+length;
-//    uav.z_max=uav_point(2);
-//    return uav;
-//}
+
 
 
 int main(int argc, char** argv)

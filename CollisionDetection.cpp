@@ -4,7 +4,7 @@
 
 #include "CollisionDetection.h"
 
-Box CreateBox(Eigen::Vector3f uav_point, float width, float length, float height){
+Box createBox(Eigen::Vector3f uav_point, float width, float length, float height){
     Box uav;
     uav.x_min=uav_point(0);
     uav.x_max=uav_point(0)+width;

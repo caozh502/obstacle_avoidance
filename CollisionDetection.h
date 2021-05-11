@@ -27,7 +27,7 @@ struct Color
 };
 
 
-        Box CreateBox(Eigen::Vector3f uav_point, float width, float length, float height);
+        Box createBox(Eigen::Vector3f uav_point, float width, float length, float height);
 
 
         bool isCollision(Box box, Box uav);
