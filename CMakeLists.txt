@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(pcfilter)
+project(obstacle_avoidance)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CXX_FLAGS "-Wall")
@@ -14,6 +14,6 @@ include_directories(
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable(pcfilter main.cpp ProcessPointClouds.cpp ProcessPointClouds.h Box.h CollisionDetection.cpp CollisionDetection.h)
+add_executable(obstacle_avoidance main.cpp ProcessPointClouds.cpp ProcessPointClouds.h Box.h CollisionDetection.cpp CollisionDetection.h)
 
-target_link_libraries (pcfilter ${PCL_LIBRARIES})
+target_link_libraries (obstacle_avoidance ${PCL_LIBRARIES})
