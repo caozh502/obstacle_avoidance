@@ -31,7 +31,7 @@ PtCdtr<PointT> ProcessPointClouds<PointT>::FilterCloud(PtCdtr<PointT> cloud, flo
     pass_z.setInputCloud(cloud);
     pass_z.setFilterFieldName("z");
     //z轴区间设置
-    pass_z.setFilterLimits(0,30);
+    pass_z.setFilterLimits(0,15);
     //设置为保留还是去除(true为去除)
     //pass_z.setFilterLimitsNegative(true);
     pass_z.filter(*cloud_fz);
@@ -47,7 +47,7 @@ PtCdtr<PointT> ProcessPointClouds<PointT>::FilterCloud(PtCdtr<PointT> cloud, flo
     pcl::PassThrough<PointT> pass_x;//设置滤波器对象
     pass_x.setInputCloud(cloud_fy);
     pass_x.setFilterFieldName("x");
-    pass_x.setFilterLimits(-15, 15);
+    pass_x.setFilterLimits(-5, 5);
     //pass_x.setFilterLimitsNegative(true);
     pass_x.filter(*cloud_fx);
     //VoxelGrid filter
@@ -174,12 +174,12 @@ std::vector<boost::filesystem::path> ProcessPointClouds<PointT>::streamPcd(std::
 }
 
 template<typename PointT>
-void ProcessPointClouds<PointT>::renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, const typename pcl::PointCloud<PointT>::Ptr cluster, int id){
-    PointT minPoint, maxPoint;
-    pcl::getMinMax3D(*cluster, minPoint, maxPoint);
+void ProcessPointClouds<PointT>::renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, Box box, int id){
+//    PointT minPoint, maxPoint;
+//    pcl::getMinMax3D(*cluster, minPoint, maxPoint);
 
     std::string cube = "box"+std::to_string(id);
-    viewer->addCube(minPoint.x, maxPoint.x, minPoint.y, maxPoint.y, minPoint.z,maxPoint.z, 1, 0, 0, cube);
+    viewer->addCube(box.x_min, box.x_max, box.y_min, box.y_max, box.z_min, box.z_max, 1, 0, 0, cube);
     viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, cube);
 }
 
@@ -187,4 +187,22 @@ template<typename PointT>
 void ProcessPointClouds<PointT>::renderPointCloud(pcl::visualization::PCLVisualizer::Ptr& viewer, const typename pcl::PointCloud<PointT>::Ptr& cloud, std::string name){
     viewer->addPointCloud<PointT> (cloud, name);
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0.5, 0, name);
+}
+
+template<typename PointT>
+Box ProcessPointClouds<PointT>::BoundingBox(PtCdtr<PointT> cluster) {
+
+    // Find bounding box for one of the clusters
+    PointT minPoint, maxPoint;
+    pcl::getMinMax3D(*cluster, minPoint, maxPoint);
+
+    Box box;
+    box.x_min = minPoint.x;
+    box.y_min = minPoint.y;
+    box.z_min = minPoint.z;
+    box.x_max = maxPoint.x;
+    box.y_max = maxPoint.y;
+    box.z_max = maxPoint.z;
+
+    return box;
 }

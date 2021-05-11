@@ -22,6 +22,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include "Box.h"
 
 namespace obstacle_detection {
     // shorthand for point cloud pointer
@@ -35,7 +36,7 @@ namespace obstacle_detection {
         //constructor
         ProcessPointClouds();
 
-        //deconstructor
+        //de-constructor
         ~ProcessPointClouds();
 
         PtCdtr<PointT> FilterCloud(PtCdtr<PointT> cloud, float filterRes);
@@ -49,9 +50,11 @@ namespace obstacle_detection {
 
         std::vector<boost::filesystem::path> streamPcd(std::string dataPath);
 
-        void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, const typename pcl::PointCloud<PointT>::Ptr cluster, int id);
+        void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, Box box, int id);
 
         void renderPointCloud(pcl::visualization::PCLVisualizer::Ptr& viewer, const typename pcl::PointCloud<PointT>::Ptr& cloud,std::string name);
+
+        Box BoundingBox(PtCdtr<PointT> cluster);
     };
 }
 #endif //PCFILTER_PROCESSPOINTCLOUDS_H
