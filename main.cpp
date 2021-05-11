@@ -80,6 +80,9 @@ void obstacleDetection(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPo
             std::cout << "find Collision on the front" << std::endl;
             viewer->removeShape("uav" + std::to_string(clusterId));
             CollisionVisualization(viewer, uav_1, colors[0], clusterId);
+            if ((box.x_min+box.x_max)/2>=0)
+                std::cout << "turn left" << std::endl;
+            else std::cout << "turn right" << std::endl;
         }
         clusterId++;
 //        if (isCollision(box, uav_2)) {
