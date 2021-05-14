@@ -123,7 +123,7 @@ int main(int argc, char** argv)
         if (streamIterator == stream.end()) {
             streamIterator = stream.begin();
         }
-        viewer->spinOnce(75);
+        viewer->spinOnce();
     }
 
     return(0);

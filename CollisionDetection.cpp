@@ -16,7 +16,7 @@ Box createBox(Eigen::Vector3f uav_point, float width, float length, float height
 }
 
 bool isCollision(Box box, Box uav){
-    auto startTime = std::chrono::steady_clock::now();
+    //auto startTime = std::chrono::steady_clock::now();
 
 
     if (box.x_min <= uav.x_max && box.x_max >= uav.x_min)
