@@ -108,7 +108,7 @@ int main(int argc, char** argv)
     std::vector<boost::filesystem::path> stream = pointProcessorI->streamPcd("/home/caleb/pcd");
     auto streamIterator = stream.begin();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloudI;
-
+    viewer->setCameraPosition(-38.362, -32.7855, -20.0726, 0.414302, -0.846604, 0.334088,-1,0,-1);
     viewer->setBackgroundColor(0.6, 0.6, 0.6);
     while (!viewer->wasStopped())
     {
