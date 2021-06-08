@@ -18,7 +18,7 @@ int color_bar[][3] =
                 { 255,255,255 },
                 { 255,0,255 }
         };
-int i;
+
 void obstacleDetection(pcl::visualization::PCLVisualizer::Ptr &viewer, ProcessPointClouds<pcl::PointXYZRGB> *pointProcessorI,
                                       const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &inputCloud) {
     //parameter
